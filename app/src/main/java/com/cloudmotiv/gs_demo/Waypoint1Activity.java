@@ -15,11 +15,8 @@ import android.os.Bundle;
 import android.text.InputType;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
 import android.widget.RadioGroup;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
@@ -31,7 +28,11 @@ import androidx.fragment.app.FragmentActivity;
 import com.cloudmotiv.DemoApplication;
 import com.cloudmotiv.R;
 import com.cloudmotiv.databinding.ActivityWaypoint1Binding;
+import com.cloudmotiv.databinding.DialogWaypointsettingBinding;
 import com.cloudmotiv.gs_demo.geofence.GeofenceHelper;
+import com.cloudmotiv.room_db.Mission;
+import com.cloudmotiv.room_db.repository.MissionRepository;
+import com.cloudmotiv.utils.Preferences;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingClient;
 import com.google.android.gms.location.GeofencingRequest;
@@ -48,6 +49,8 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,7 +77,7 @@ import dji.sdk.products.Aircraft;
 import dji.sdk.sdkmanager.DJISDKManager;
 import dji.sdk.useraccount.UserAccountManager;
 
-public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener,GoogleMap.OnMapLongClickListener, OnMapReadyCallback {
+public class Waypoint1Activity extends FragmentActivity implements View.OnClickListener, GoogleMap.OnMapClickListener, GoogleMap.OnMapLongClickListener, OnMapReadyCallback {
 
     protected static final String TAG = "GSDemoActivity";
 
@@ -107,6 +110,8 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     private int FINE_LOCATION_ACCESS_REQUEST_CODE = 10001;
     private int BACKGROUND_LOCATION_ACCESS_REQUEST_CODE = 10002;
+
+    MissionRepository missionRepository;
 
     @Override
     protected void onResume() {
@@ -152,12 +157,45 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         binding.start.setOnClickListener(this);
         binding.stop.setOnClickListener(this);
         binding.geoFencing.setOnClickListener(this);
+        binding.saveMission.setOnClickListener(view -> {
+            saveMission();
+        });
+        binding.loadMission.setOnClickListener(view -> loadMission());
+    }
+
+    private void loadMission() {
+        try {
+            Mission mission = Preferences.readMission(Waypoint1Activity.this);
+            if (mission != null){
+                addGeofencing(mission.getGeoFencingRadius());
+                waypointList = new Gson().fromJson(mission.getWayPointList(),new TypeToken<ArrayList<Waypoint>>(){}.getType());
+                for (Waypoint wayPoint:waypointList){
+                    markWaypoint(new LatLng(wayPoint.coordinate.getLatitude(),wayPoint.coordinate.getLongitude()));
+                }
+//                droneLocationLat = mission.getDroneLocationLat();
+//                droneLocationLng = mission.getDroneLocationLng();
+                setResultToToast("Mission Restore");
+//            updateDroneLocation();
+            }else{
+                setResultToToast("Please save mission first");
+            }
+        }catch (Exception e){
+            e.printStackTrace();
+            setResultToToast("Please save mission first");
+        }
+
+    }
+
+    private void saveMission() {
+        Mission mission = new Mission("test", droneLocationLat, droneLocationLng, GEOFENCE_RADIUS, new Gson().toJson(waypointList));
+        Preferences.writeMission(Waypoint1Activity.this, mission);
+        setResultToToast("Mission Saved");
     }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        missionRepository = new MissionRepository(Waypoint1Activity.this);
         // When the compile and target version is higher than 22, please request the
         // following permissions at runtime to ensure the
         // SDK work well.
@@ -304,9 +342,9 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     @Override
     public void onMapClick(LatLng point) {
         if (isAdd == true) {
-            double distance =getDistanceFromLatLonInMeters(droneLocationLat,droneLocationLng,point.latitude,point.longitude);
-            Log.d(TAG, "onMapClick: "+distance);
-            if(getDistanceFromLatLonInMeters(droneLocationLat,droneLocationLng,point.latitude,point.longitude)<GEOFENCE_RADIUS) {
+            double distance = getDistanceFromLatLonInMeters(droneLocationLat, droneLocationLng, point.latitude, point.longitude);
+            Log.d(TAG, "onMapClick: " + distance);
+            if (getDistanceFromLatLonInMeters(droneLocationLat, droneLocationLng, point.latitude, point.longitude) < GEOFENCE_RADIUS) {
                 markWaypoint(point);
                 Waypoint mWaypoint = new Waypoint(point.latitude, point.longitude, altitude);
                 //Add Waypoints to Waypoint arraylist;
@@ -318,8 +356,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     waypointList.add(mWaypoint);
                     waypointMissionBuilder.waypointList(waypointList).waypointCount(waypointList.size());
                 }
-            }
-            else{
+            } else {
                 AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
                 builder.setMessage("You can't add waypoint outside the geofence.");
@@ -344,7 +381,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 alertDialog.show();
             }
         } else {
-
             setResultToToast("Cannot Add Waypoint");
         }
     }
@@ -450,8 +486,32 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             public void onClick(DialogInterface dialog, int whichButton) {
                 //What ever you want to do with the value
                 Float radiusValue = Float.valueOf(radius.getText().toString());
-                GEOFENCE_RADIUS =radiusValue;
+                GEOFENCE_RADIUS = radiusValue;
                 addGeofencing(radiusValue);
+            }
+        });
+
+        alert.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                // what ever you want to do with No option.
+            }
+        });
+
+        alert.show();
+    }
+
+    private void missionTitle() {
+        AlertDialog.Builder alert = new AlertDialog.Builder(this);
+        final EditText radius = new EditText(this);
+        radius.setInputType(InputType.TYPE_CLASS_NUMBER);
+        alert.setTitle("Enter Mission Title");
+
+        alert.setView(radius);
+
+        alert.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int whichButton) {
+                Mission mission = new Mission(radius.getText().toString(), droneLocationLat, droneLocationLng, GEOFENCE_RADIUS, new Gson().toJson(waypointList));
+                missionRepository.insert(mission);
             }
         });
 
@@ -475,12 +535,12 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     }
 
     private void addGeofencing(Float radius) {
-        LatLng point = new LatLng(droneLocationLat,droneLocationLng);
-        Log.d("onMapLongClick", "onMapLongClick: "+point);
+        LatLng point = new LatLng(droneLocationLat, droneLocationLng);
+        Log.d("onMapLongClick", "onMapLongClick: " + point);
         if (Build.VERSION.SDK_INT >= 29) {
             //We need background permission
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                handleMapLongClick(point,radius);
+                handleMapLongClick(point, radius);
             } else {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
                     //We show a dialog and ask for permission
@@ -491,7 +551,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             }
 
         } else {
-            handleMapLongClick(point,radius);
+            handleMapLongClick(point, radius);
         }
 
     }
@@ -515,14 +575,15 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     }
 
     private void showSettingDialog() {
-        LinearLayout wayPointSettings = (LinearLayout) getLayoutInflater().inflate(R.layout.dialog_waypointsetting, null);
+        DialogWaypointsettingBinding dialogWaypointsettingBinding = DialogWaypointsettingBinding.inflate(getLayoutInflater());
+//        LinearLayout wayPointSettings = (LinearLayout) getLayoutInflater().inflate(R.layout.dialog_waypointsetting, null);
 
-        final TextView wpAltitude_TV = (TextView) wayPointSettings.findViewById(R.id.altitude);
-        RadioGroup speed_RG = (RadioGroup) wayPointSettings.findViewById(R.id.speed);
-        RadioGroup actionAfterFinished_RG = (RadioGroup) wayPointSettings.findViewById(R.id.actionAfterFinished);
-        RadioGroup heading_RG = (RadioGroup) wayPointSettings.findViewById(R.id.heading);
+//        final TextView wpAltitude_TV = (TextView) wayPointSettings.findViewById(R.id.altitude);
+//        RadioGroup speed_RG = (RadioGroup) wayPointSettings.findViewById(R.id.speed);
+//        RadioGroup actionAfterFinished_RG = (RadioGroup) wayPointSettings.findViewById(R.id.actionAfterFinished);
+//        RadioGroup heading_RG = (RadioGroup) wayPointSettings.findViewById(R.id.heading);
 
-        speed_RG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        dialogWaypointsettingBinding.speed.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
 
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -537,7 +598,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
         });
 
-        actionAfterFinished_RG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        dialogWaypointsettingBinding.actionAfterFinished.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
 
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -554,7 +615,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             }
         });
 
-        heading_RG.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
+        dialogWaypointsettingBinding.heading.setOnCheckedChangeListener(new RadioGroup.OnCheckedChangeListener() {
 
             @Override
             public void onCheckedChanged(RadioGroup group, int checkedId) {
@@ -574,11 +635,11 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
         new AlertDialog.Builder(this)
                 .setTitle("")
-                .setView(wayPointSettings)
+                .setView(dialogWaypointsettingBinding.getRoot())
                 .setPositiveButton("Finish", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
 
-                        String altitudeString = wpAltitude_TV.getText().toString();
+                        String altitudeString = dialogWaypointsettingBinding.altitude.getText().toString();
                         altitude = Integer.parseInt(nulltoIntegerDefalt(altitudeString));
                         Log.e(TAG, "altitude " + altitude);
                         Log.e(TAG, "speed " + mSpeed);
@@ -688,12 +749,12 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
 
     @Override
     public void onMapLongClick(LatLng latLng) {
-        int type= Build.VERSION.SDK_INT;
-        Log.d("onMapLongClick", "onMapLongClick: "+type);
+        int type = Build.VERSION.SDK_INT;
+        Log.d("onMapLongClick", "onMapLongClick: " + type);
         if (Build.VERSION.SDK_INT >= 29) {
             //We need background permission
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-                handleMapLongClick(latLng,GEOFENCE_RADIUS);
+                handleMapLongClick(latLng, GEOFENCE_RADIUS);
             } else {
                 if (ActivityCompat.shouldShowRequestPermissionRationale(this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
                     //We show a dialog and ask for permission
@@ -704,12 +765,12 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             }
 
         } else {
-            handleMapLongClick(latLng,GEOFENCE_RADIUS);
+            handleMapLongClick(latLng, GEOFENCE_RADIUS);
         }
 
     }
 
-    private void handleMapLongClick(LatLng latLng,Float radius) {
+    private void handleMapLongClick(LatLng latLng, Float radius) {
         gMap.clear();
         addMarker(latLng);
         addCircle(latLng, radius);
@@ -764,7 +825,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     }
 
 
-
     @Override
     public void onMapReady(GoogleMap googleMap) {
         if (gMap == null) {
@@ -775,6 +835,8 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
         LatLng shenzhen = new LatLng(22.5362, 113.9454);
         gMap.addMarker(new MarkerOptions().position(shenzhen).title("Marker in Shenzhen"));
         gMap.moveCamera(CameraUpdateFactory.newLatLng(shenzhen));
+        binding.locate.performClick();
+
     }
 
 }

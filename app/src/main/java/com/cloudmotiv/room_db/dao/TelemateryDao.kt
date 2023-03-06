@@ -1,7 +1,8 @@
-package com.cloudmotiv.room_db
+package com.cloudmotiv.room_db.dao
 
 import androidx.lifecycle.LiveData
 import androidx.room.*
+import com.cloudmotiv.room_db.Telematery
 
 @Dao
 interface TelemateryDao {

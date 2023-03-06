@@ -15,7 +15,7 @@ import androidx.core.content.ContextCompat
 import com.cloudmotiv.databinding.ActivityMainBinding
 import com.cloudmotiv.gs_demo.Waypoint1Activity
 import com.cloudmotiv.room_db.Telematery
-import com.cloudmotiv.room_db.TelemateryRepository
+import com.cloudmotiv.room_db.repository.TelemateryRepository
 import com.google.gson.Gson
 import dji.common.error.DJIError
 import dji.common.error.DJISDKError
@@ -37,7 +37,7 @@ class MainActivity : AppCompatActivity() {
     private var mHandler: Handler? = null
     var binding: ActivityMainBinding? = null
     private var mFlightController: FlightController? = null
-    var repository:TelemateryRepository? = null
+    var repository: TelemateryRepository? = null
 
     private val REQUIRED_PERMISSION_LIST = arrayOf(
         Manifest.permission.BLUETOOTH,
@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity() {
         if (missingPermission.isEmpty()) {
             startSDKRegistration()
         } else {
-            showToast("Need to grant the permissions!")
+//            showToast("Need to grant the permissions!")
             ActivityCompat.requestPermissions(
                 this,
                 missingPermission.toTypedArray<String>(),
@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity() {
         if (missingPermission.isEmpty()) {
             startSDKRegistration()
         } else {
-            showToast("Missing permissions!!!")
+//            showToast("Missing permissions!!!")
         }
     }
     private fun initFlightController() {

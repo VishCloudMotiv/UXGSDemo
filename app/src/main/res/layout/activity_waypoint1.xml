@@ -242,12 +242,28 @@
 
 
         <LinearLayout
-            android:layout_marginTop="8dp"
+            android:layout_centerVertical="true"
+            android:layout_alignParentBottom="true"
+            android:layout_marginEnd="8dp"
+            android:layout_marginBottom="16dp"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_below="@id/signal"
             android:layout_alignParentEnd="true"
-            android:orientation="horizontal">
+            android:orientation="vertical">
+
+            <ImageView
+                android:layout_marginStart="8dp"
+                android:id="@+id/loadMission"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_centerHorizontal="true"
+                android:layout_marginBottom="8dp"
+                android:background="@drawable/black_round"
+                android:gravity="center"
+                android:paddingHorizontal="8dp"
+                android:src="@drawable/outline_arrow_downward_24"
+                android:textColor="@color/white"
+                android:textSize="18sp" />
             <LinearLayout
                 android:layout_marginStart="8dp"
                 android:layout_width="wrap_content"
@@ -344,6 +360,7 @@
             android:id="@+id/CameraCapturePanel"
             android:layout_width="50dp"
             android:layout_height="213dp"
+            android:visibility="gone"
             android:layout_below="@id/camera"
             android:layout_alignParentRight="true"
             tools:ignore="RtlHardcoded" />
