@@ -14,6 +14,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.cloudmotiv.databinding.ActivityMainBinding
 import com.cloudmotiv.gs_demo.Waypoint1Activity
+import com.cloudmotiv.gs_demo_vishal.GSDemoVishalActivity
 import com.cloudmotiv.room_db.Telematery
 import com.cloudmotiv.room_db.repository.TelemateryRepository
 import com.google.gson.Gson
@@ -80,6 +81,14 @@ class MainActivity : AppCompatActivity() {
                 Intent(
                     this@MainActivity,
                     Waypoint1Activity::class.java
+                )
+            )
+        }
+        binding?.btnGeoDemo?.setOnClickListener {
+            startActivity(
+                Intent(
+                    this@MainActivity,
+                    GSDemoVishalActivity::class.java
                 )
             )
         }
@@ -215,6 +224,7 @@ class MainActivity : AppCompatActivity() {
 //            showToast("Missing permissions!!!")
         }
     }
+
     private fun initFlightController() {
         val product = DemoApplication.getProductInstance()
         if (product != null && product.isConnected) {
@@ -227,7 +237,13 @@ class MainActivity : AppCompatActivity() {
                 var droneLocationLat = djiFlightControllerCurrentState.aircraftLocation.latitude
                 var droneLocationLng = djiFlightControllerCurrentState.aircraftLocation.longitude
                 var dronAttitude = djiFlightControllerCurrentState.attitude
-                repository?.insert(Telematery(lat =droneLocationLat, long = droneLocationLng, attitude = Gson().toJson(dronAttitude)))
+                repository?.insert(
+                    Telematery(
+                        lat = droneLocationLat,
+                        long = droneLocationLng,
+                        attitude = Gson().toJson(dronAttitude)
+                    )
+                )
             })
         }
     }

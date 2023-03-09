@@ -136,6 +136,7 @@
         android:layout_height="20dp"/>
 
     <LinearLayout
+        android:id="@+id/llCompass"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
@@ -154,11 +155,25 @@
 
     <!--Take off and return home buttons on left -->
     <LinearLayout
+        android:layout_above="@id/llCompass"
         android:layout_width="40dp"
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
         android:layout_marginStart="12dp"
         android:orientation="vertical">
+        <TextView
+            android:id="@+id/btnGeoDemo"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="@drawable/black_round"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:layout_marginBottom="12dp"
+            android:layout_centerHorizontal="true"
+            android:paddingHorizontal="8dp"
+            android:text="D"
+            />
         <TextView
             android:id="@+id/btnPlanMission"
             android:layout_width="40dp"
