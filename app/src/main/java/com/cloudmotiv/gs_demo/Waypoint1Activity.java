@@ -421,9 +421,25 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     double distance = getDistanceFromLatLonInMeters(locationCoordinate2D.getLatitude(), locationCoordinate2D.getLongitude(), droneLocationLat, droneLocationLng);
                     setResultToToast("onMapClick: " + distance + "drone Home location" + locationCoordinate2D.getLatitude() + " " + locationCoordinate2D.getLongitude() + "drone current location" + droneLocationLat + " " + droneLocationLng);
                     if (distance < GEOFENCE_RADIUS) {
+                        mFlightController.setStateCallback(new FlightControllerState.Callback() {
+
+                            @Override
+                            public void onUpdate(FlightControllerState djiFlightControllerCurrentState) {
+                                mFlightController.setVirtualStickModeEnabled(true, new CommonCallbacks.CompletionCallback() {
+                                    @Override
+                                    public void onResult(DJIError error) {
+                                        if (error == null) {
+                                            // Send virtual stick control data to hover the drone
+                                            FlightControlData controlData = new FlightControlData(0, 0, 0, 50);
+                                            mFlightController.sendVirtualStickFlightControlData(controlData, null);
+                                        }
+                                    }
+                                });
+                            }
+                        });
                         // Send virtual stick control data to hover the drone
-                        FlightControlData controlData = new FlightControlData(0, 0, 0, 50);
-                        mFlightController.sendVirtualStickFlightControlData(controlData, null);
+//                        FlightControlData controlData = new FlightControlData(0, 0, 0, 50);
+//                        mFlightController.sendVirtualStickFlightControlData(controlData, null);
                     }
                 }
 
