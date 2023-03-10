@@ -59,6 +59,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import dji.common.error.DJIError;
 import dji.common.flightcontroller.FlightControllerState;
+import dji.common.flightcontroller.virtualstick.FlightControlData;
 import dji.common.mission.waypoint.Waypoint;
 import dji.common.mission.waypoint.WaypointMission;
 import dji.common.mission.waypoint.WaypointMissionDownloadEvent;
@@ -67,6 +68,7 @@ import dji.common.mission.waypoint.WaypointMissionFinishedAction;
 import dji.common.mission.waypoint.WaypointMissionFlightPathMode;
 import dji.common.mission.waypoint.WaypointMissionHeadingMode;
 import dji.common.mission.waypoint.WaypointMissionUploadEvent;
+import dji.common.model.LocationCoordinate2D;
 import dji.common.useraccount.UserAccountState;
 import dji.common.util.CommonCallbacks;
 import dji.sdk.base.BaseProduct;
@@ -86,6 +88,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private GoogleMap gMap;
 
     private boolean isAdd = false;
+    private boolean isMissionStarted = false;
 
     private double droneLocationLat = 12.971599, droneLocationLng = 77.594566;
     private final Map<Integer, Marker> mMarkers = new ConcurrentHashMap<Integer, Marker>();
@@ -166,20 +169,21 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     private void loadMission() {
         try {
             Mission mission = Preferences.readMission(Waypoint1Activity.this);
-            if (mission != null){
+            if (mission != null) {
                 addGeofencing(mission.getGeoFencingRadius());
-                waypointList = new Gson().fromJson(mission.getWayPointList(),new TypeToken<ArrayList<Waypoint>>(){}.getType());
-                for (Waypoint wayPoint:waypointList){
-                    markWaypoint(new LatLng(wayPoint.coordinate.getLatitude(),wayPoint.coordinate.getLongitude()));
+                waypointList = new Gson().fromJson(mission.getWayPointList(), new TypeToken<ArrayList<Waypoint>>() {
+                }.getType());
+                for (Waypoint wayPoint : waypointList) {
+                    markWaypoint(new LatLng(wayPoint.coordinate.getLatitude(), wayPoint.coordinate.getLongitude()));
                 }
 //                droneLocationLat = mission.getDroneLocationLat();
 //                droneLocationLng = mission.getDroneLocationLng();
                 setResultToToast("Mission Restore");
 //            updateDroneLocation();
-            }else{
+            } else {
                 setResultToToast("Please save mission first");
             }
-        }catch (Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             setResultToToast("Please save mission first");
         }
@@ -410,6 +414,25 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 }
             }
         });
+        if (mFlightController != null) {
+            mFlightController.getHomeLocation(new CommonCallbacks.CompletionCallbackWith<LocationCoordinate2D>() {
+                @Override
+                public void onSuccess(LocationCoordinate2D locationCoordinate2D) {
+                    double distance = getDistanceFromLatLonInMeters(locationCoordinate2D.getLatitude(), locationCoordinate2D.getLongitude(), droneLocationLat, droneLocationLng);
+                    setResultToToast("onMapClick: " + distance + "drone Home location" + locationCoordinate2D.getLatitude() + " " + locationCoordinate2D.getLongitude() + "drone current location" + droneLocationLat + " " + droneLocationLng);
+                    if (distance < GEOFENCE_RADIUS) {
+                        // Send virtual stick control data to hover the drone
+                        FlightControlData controlData = new FlightControlData(0, 0, 0, 50);
+                        mFlightController.sendVirtualStickFlightControlData(controlData, null);
+                    }
+                }
+
+                @Override
+                public void onFailure(DJIError djiError) {
+                    setResultToToast("Drone Home Location not found");
+                }
+            });
+        }
     }
 
     private void markWaypoint(LatLng point) {
@@ -441,8 +464,11 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                     }
 
                 });
-                waypointList.clear();
                 if (waypointMissionBuilder != null) {
+                    for (Waypoint waypoint : waypointList) {
+                        waypointMissionBuilder.removeWaypoint(waypoint);
+                    }
+                    waypointList.clear();
                     waypointMissionBuilder.waypointList(waypointList);
                 }
                 updateDroneLocation();
@@ -457,7 +483,11 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 break;
             }
             case R.id.start: {
-                startWaypointMission();
+                if (isMissionStarted) {
+                    stopWaypointMission();
+                } else {
+                    startWaypointMission();
+                }
                 break;
             }
             case R.id.stop: {
@@ -466,7 +496,6 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
             }
             case R.id.geo_fencing: {
                 setupDialog();
-
                 break;
             }
             default:
@@ -727,20 +756,43 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
     }
 
     private void startWaypointMission() {
+        binding.start.setEnabled(false);
+        //TODO comment after test
+//        isMissionStarted = true;
+//        binding.start.setImageResource(R.drawable.baseline_stop_24);
+//        binding.start.setEnabled(true);
 
         getWaypointMissionOperator().startMission(new CommonCallbacks.CompletionCallback() {
             @Override
             public void onResult(DJIError error) {
+                binding.start.setEnabled(true);
+                if (error == null) {
+                    isMissionStarted = true;
+                    binding.start.setImageResource(R.drawable.baseline_stop_24);
+                }
                 setResultToToast("Mission Start: " + (error == null ? "Successfully" : error.getDescription()));
             }
         });
     }
 
     private void stopWaypointMission() {
+        binding.stop.setEnabled(false);
+        binding.start.setEnabled(false);
+        //TODO comment after test
+//        isMissionStarted = false;
+//        binding.start.setImageResource(R.drawable.baseline_play_arrow_24);
+//        binding.stop.setEnabled(true);
+//        binding.start.setEnabled(true);
 
         getWaypointMissionOperator().stopMission(new CommonCallbacks.CompletionCallback() {
             @Override
             public void onResult(DJIError error) {
+                binding.stop.setEnabled(true);
+                binding.start.setEnabled(true);
+                if (error == null) {
+                    isMissionStarted = false;
+                    binding.start.setImageResource(R.drawable.baseline_play_arrow_24);
+                }
                 setResultToToast("Mission Stop: " + (error == null ? "Successfully" : error.getDescription()));
             }
         });

@@ -62,7 +62,6 @@ public class GeoFenceBroadcastReceiver extends BroadcastReceiver {
                 notificationHelper.sendHighPriorityNotification("GEOFENCE_TRANSITION_DWELL", "", Waypoint1Activity.class);
                 break;
             case Geofence.GEOFENCE_TRANSITION_EXIT:
-
                 hoverDrone();
                 Toast.makeText(context, "GEOFENCE_TRANSITION_EXIT", Toast.LENGTH_SHORT).show();
                 notificationHelper.sendHighPriorityNotification("GEOFENCE_TRANSITION_EXIT", "", Waypoint1Activity.class);
