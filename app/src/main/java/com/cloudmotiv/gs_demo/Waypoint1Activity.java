@@ -420,7 +420,7 @@ public class Waypoint1Activity extends FragmentActivity implements View.OnClickL
                 public void onSuccess(LocationCoordinate2D locationCoordinate2D) {
                     double distance = getDistanceFromLatLonInMeters(locationCoordinate2D.getLatitude(), locationCoordinate2D.getLongitude(), droneLocationLat, droneLocationLng);
                     setResultToToast("onMapClick: " + distance + "drone Home location" + locationCoordinate2D.getLatitude() + " " + locationCoordinate2D.getLongitude() + "drone current location" + droneLocationLat + " " + droneLocationLng);
-                    if (distance < GEOFENCE_RADIUS) {
+                    if (distance >= GEOFENCE_RADIUS) {
                         mFlightController.setStateCallback(new FlightControllerState.Callback() {
 
                             @Override
